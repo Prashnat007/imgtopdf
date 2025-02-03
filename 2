@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Image to PDF Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        :root {
+            --primary-bg: #1a1a1a;
+            --secondary-bg: #2d2d2d;
+            --accent-color: #4f46e5;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --border-color: #404040;
+            --hover-bg: #3d3d3d;
+            --error-color: #ef4444;
+            --success-color: #22c55e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: var(--secondary-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            padding: 24px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: var(--text-primary);
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 24px;
+            transition: all 0.3s ease;
+            background: var(--primary-bg);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .drop-zone.drag-over {
+            border-color: var(--accent-color);
+            background: rgba(79, 70, 229, 0.1);
+        }
+
+        .drop-zone p {
+            color: var(--text-secondary);
+            margin: 8px 0;
+        }
+
+        .drop-zone .icon {
+            font-size: 48px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .preview-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--primary-bg);
+            border: 1px solid var(--border-color);
+        }
+
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-item .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .preview-item:hover .overlay {
+            opacity: 1;
+        }
+
+        .preview-item .image-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.8);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.1);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--hover-bg);
+        }
+
+        .btn-icon {
+            padding: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+        }
+
+        .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .settings-panel {
+            background: var(--primary-bg);
+            padding: 24px;
+            border-radius: 12px;
+            margin-top: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            background: var(--secondary-bg);
+            color: var(--text-primary);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .actions-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            background: rgba(79, 70, 229, 0.1);
+            color: var(--text-primary);
+            display: none;
+        }
+
+        .progress-container {
+            margin-top: 16px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--border-color);
+            border-radius: 2px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--accent-color);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .watermark-panel {
+            margin-top: 16px;
+            padding: 16px;
+            background: var(--primary-bg);
+            border-radius: 8px;
+        }
+
+        .color-picker {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .color-option {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .color-option.active {
+            border-color: white;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .preview-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+
+            .actions-bar {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Advanced Image to PDF Converter</h1>
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('upload')">Upload</div>
+                <div class="tab" onclick="switchTab('settings')">Settings</div>
+                <div class="tab" onclick="switchTab('watermark')">Watermark</div>
+            </div>
+        </div>
+
+        <div class="alert" id="alert"></div>
+
+        <div id="uploadTab">
+            <div class="drop-zone" id="dropZone">
+                <div class="icon">📁</div>
+                <p>Drag and drop images here</p>
+                <p>or</p>
+                <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                    Browse Files
+                </button>
+                <input type="file" id="fileInput" multiple accept="image/*" style="display: none">
+            </div>
+
+            <div class="preview-grid" id="previewGrid"></div>
+
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-bar-fill" id="progressBarFill"></div>
+                </div>
+                <div class="progress-text" id="progressText"></div>
+            </div>
+        </div>
+
+        <div id="settingsTab" style="display: none;">
+            <div class="settings-panel">
+                <h3 style="margin-bottom: 16px;">PDF Settings</h3>
+                <div class="form-group">
+                    <label for="pageSize">Page Size</label>
+                    <select id="pageSize" class="form-control">
+                        <option value="A4">A4</option>
+                        <option value="Letter">Letter</option>
+                        <option value="Legal">Legal</option>
+                        <option value="A3">A3</option>
+                        <option value="A5">A5</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="orientation">Orientation</label>
+                    <select id="orientation" class="form-control">
+                        <option value="portrait">Portrait</option>
+                        <option value="landscape">Landscape</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="quality">Image Quality</label>
+                    <input type="range" id="quality" class="form-control" min="0.1" max="1" step="0.1" value="0.8">
+                    <span id="qualityValue" style="color: var(--text-secondary);">80%</span>
+                </div>
+                <div class="form-group">
+                    <label for="filename">Output Filename</label>
+                    <input type="text" id="filename" class="form-control" value="converted-images" placeholder="Enter filename">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="compression" checked>
+                        Enable Compression
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div id="watermarkTab" style="display: none;">
+            <div class="watermark-panel">
+                <div class="form-group">
+                    <label for="watermarkText">Watermark Text</label>
+                    <input type="text" id="watermarkText" class="form-control" placeholder="Enter watermark text">
+                </div>
+                <div class="form-group">
+                    <label for="watermarkOpacity">Opacity</label>
+                    <input type="range" id="watermarkOpacity" class="form-control" min="0.1" max="1" step="0.1" value="0.3">
+                    <span id="opacityValue" style="color: var(--text-secondary);">30%</span>
+                </div>
+                <div class="form-group">
+                    <label>Watermark Color</label>
+                    <div class="color-picker" id="colorPicker">
+                        <div class="color-option active" style="background: #ffffff" data-color="#ffffff"></div>
+                        <div class="color-option" style="background: #ff0000" data-color="#ff0000"></div>
+                        <div class="color-option" style="background: #00ff00" data-color="#00ff00"></div>
+                        <div class="color-option" style="background: #0000ff" data-color="#0000ff"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions-bar">
+            <button class="btn btn-outline" onclick="clearAll()">Clear All</button>
+            <button class="btn btn-primary" onclick="generatePDF()">Generate PDF</button>
+        </div>
+    </div>
+
+    <script>
+        let images = [];
+        let currentTab = 'upload';
+        let selectedColor = '#ffffff';
+
+        // Initialize elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const previewGrid = document.getElementById('previewGrid');
+        const progressBar = document.getElementById('progressBar');
+        const progressBarFill = document.getElementById('progressBarFill');
+        const progressText = document.getElementById('progressText');
+        const alert = document.getElementById('alert');
+        const qualityInput = document.getElementById('quality');
+        const qualityValue = document.getElementById('qualityValue');
+        const watermarkOpacity = document.getElementById('watermarkOpacity');
+        const opacityValue = document.getElementById('opacityValue');
+
+        // Initialize color picker
+        document.querySelectorAll('.color-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelector('.color-option.active').classList.remove('active');
+                option.classList.add('active');
+                selectedColor = option.dataset.color;
+            });
+        });
+
+        // Event listeners for inputs
+        qualityInput.addEventListener('input', (e) => {
+            qualityValue.textContent = `${Math.round(e.target.value * 100)}%`;
+        });
+
+        watermarkOpacity.addEventListener('input', (e) => {
+            opacityValue.textContent = `${Math.round(e.target.value * 100)}%`;
+        });
+
+        // Tab switching function
+        function switchTab(tab) {
+            document.getElementById(`${currentTab}Tab`).style.display = 'none';
+            document.getElementById(`${tab}Tab`).style.display = 'block';
+            
+            document.querySelector(`.tab.active`).classList.remove('active');
+            document.querySelector(`.tab:nth-child(${tab === 'upload' ? 1 : tab === 'settings' ? 2 : 3})`).classList.add('active');
+            
+            currentTab = tab;
+        }
+
+        // Drag and drop handlers
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        // File handling functions
+        async function handleFiles(files) {
+            const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+            
+            for (const file of imageFiles) {
+                try {
+                    const image = await loadImage(file);
+                    images.push(image);
+                } catch (error) {
+                    showAlert(`Error loading image: ${file.name}`, 'error');
+                }
+            }
+            updatePreviewGrid();
+        }
+
+        function loadImage(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        resolve({
+                            id: Math.random().toString(36).substr(2, 9),
+                            data: e.target.result,
+                            file: file,
+                            width: img.width,
+                            height: img.height,
+                            name: file.name,
+                            size: formatFileSize(file.size)
+                        });
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function updatePreviewGrid() {
+            previewGrid.innerHTML = images.map((image, index) => `
+                <div class="preview-item">
+                    <img src="${image.data}" alt="Preview ${index + 1}">
+                    <div class="overlay">
+                        ${index > 0 ? `
+                            <button class="btn-icon" onclick="moveImage(${index}, 'up')">↑</button>
+                        ` : ''}
+                        ${index < images.length - 1 ? `
+                            <button class="btn-icon" onclick="moveImage(${index}, 'down')">↓</button>
+                        ` : ''}
+                        <button class="btn-icon" onclick="removeImage(${index})">×</button>
+                    </div>
+                    <div class="image-info">
+                        ${image.name}<br>
+                        ${image.width}x${image.height} • ${image.size}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function moveImage(index, direction) {
+            const newIndex = direction === 'up' ? index - 1 : index + 1;
+            if (newIndex >= 0 && newIndex < images.length) {
+                [images[index], images[newIndex]] = [images[newIndex], images[index]];
+                updatePreviewGrid();
+            }
+        }
+
+        function removeImage(index) {
+            images.splice(index, 1);
+            updatePreviewGrid();
+        }
+
+        function clearAll() {
+            images = [];
+            updatePreviewGrid();
+        }
+
+        function showAlert(message, type = 'info') {
+            alert.style.display = 'block';
+            alert.textContent = message;
+            alert.style.background = type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(79, 70, 229, 0.1)';
+            alert.style.color = type === 'error' ? var(--error-color) : var(--text-primary);
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 3000);
+        }
+
+        function updateProgress(current, total) {
+            const percent = (current / total) * 100;
+            progressBarFill.style.width = `${percent}%`;
+            progressText.textContent = `Processing image ${current} of ${total}`;
+        }
+
+        // Add watermark to canvas
+        function addWatermark(canvas, text, opacity) {
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            
+            ctx.globalAlpha = opacity;
+            ctx.fillStyle = selectedColor;
+            ctx.font = '48px Arial';
+            ctx.rotate(-Math.PI / 4);
+            
+            const watermarkWidth = ctx.measureText(text).width;
+            const repeatX = Math.ceil(Math.sqrt(2) * canvas.width / watermarkWidth);
+            const repeatY = Math.ceil(Math.sqrt(2) * canvas.height / 48);
+            
+            for (let i = 0; i < repeatX; i++) {
+                for (let j = 0; j < repeatY; j++) {
+                    ctx.fillText(text, 
+                        (i * watermarkWidth * 1.5) - canvas.width/2, 
+                        (j * 100) - canvas.height/2
+                    );
+                }
+            }
+            
+            ctx.restore();
+        }
+
+        async function generatePDF() {
+            if (images.length === 0) {
+                showAlert('Please add at least one image', 'error');
+                return;
+            }
+
+            try {
+                progressBar.style.display = 'block';
+                progressText.style.display = 'block';
+                progressBarFill.style.width = '0%';
+
+                const { PDFDocument, PageSizes } = PDFLib;
+                const pdfDoc = await PDFDocument.create();
+
+                const pageSize = document.getElementById('pageSize').value;
+                const orientation = document.getElementById('orientation').value;
+                const quality = parseFloat(document.getElementById('quality').value);
+                const enableCompression = document.getElementById('compression').checked;
+                const watermarkText = document.getElementById('watermarkText').value;
+                const watermarkOpacityValue = parseFloat(document.getElementById('watermarkOpacity').value);
+                const filename = document.getElementById('filename').value || 'converted-images';
+
+                for (let i = 0; i < images.length; i++) {
+                    const image = images[i];
+                    const img = new Image();
+                    await new Promise((resolve) => {
+                        img.onload = resolve;
+                        img.src = image.data;
+                    });
+
+                    // Create a canvas to process the image
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Set canvas size based on quality
+                    canvas.width = img.width * quality;
+                    canvas.height = img.height * quality;
+                    
+                    // Draw image
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    
+                    // Add watermark if specified
+                    if (watermarkText) {
+                        addWatermark(canvas, watermarkText, watermarkOpacityValue);
+                    }
+
+                    // Convert canvas to bytes
+                    const imageData = canvas.toDataURL('image/jpeg', enableCompression ? quality : 1);
+                    const imageBytes = await fetch(imageData).then(res => res.arrayBuffer());
+
+                    // Embed the image
+                    const embeddedImage = await pdfDoc.embedJpg(imageBytes);
+
+                    // Add page with proper size
+                    const page = pdfDoc.addPage(PageSizes[pageSize]);
+                    if (orientation === 'landscape') {
+                        page.setRotation(degrees(90));
+                    }
+
+                    const { width, height } = page.getSize();
+                    const aspectRatio = embeddedImage.width / embeddedImage.height;
+
+                    // Calculate dimensions to fit the page
+                    let imageWidth = width - 40;
+                    let imageHeight = imageWidth / aspectRatio;
+
+                    if (imageHeight > height - 40) {
+                        imageHeight = height - 40;
+                        imageWidth = imageHeight * aspectRatio;
+                    }
+
+                    // Center the image on the page
+                    const x = (width - imageWidth) / 2;
+                    const y = (height - imageHeight) / 2;
+
+                    page.drawImage(embeddedImage, {
+                        x,
+                        y,
+                        width: imageWidth,
+                        height: imageHeight,
+                    });
+
+                    updateProgress(i + 1, images.length);
+                }
+
+                // Save the PDF
+                const pdfBytes = await pdfDoc.save();
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                saveAs(blob, `${filename}.pdf`);
+
+                showAlert('PDF generated successfully!');
+            } catch (error) {
+                console.error('Error generating PDF:', error);
+                showAlert('Error generating PDF. Please try again.', 'error');
+            } finally {
+                progressBar.style.display = 'none';
+                progressText.style.display = 'none';
+            }
+        }
+
+        // Initialize with some helper text if no images
+        updatePreviewGrid();
+        if (images.length === 0) {
+            showAlert('Add images to get started!');
+        }
+    </script>
+</body>
+</html>
